@@ -61,11 +61,11 @@ jobs:
         working-directory: './CSharp xUnit starter'
         continue-on-error: true
 
-      - name: Tests réussis ☀️
+      - name: Passed tests ☀️
         if: steps.test.outcome == 'success'
         run: echo "☀️ Tous les tests ont réussi!"
 
-      - name: Tests échoués ⛈️
+      - name: Failed tests ⛈️
         if: steps.test.outcome != 'success'
         run: |
           echo "⛈️ Certains tests ont échoué!"
