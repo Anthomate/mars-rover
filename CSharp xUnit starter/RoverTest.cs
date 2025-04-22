@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace CSharp_xUnit_starter;
 
 public class RoverTest
@@ -7,6 +9,11 @@ public class RoverTest
     {
         var rover = new Rover(3, 4, Direction.South);
         Assert.Equivalent(rover.Coordinates, new Coordinates(3, 4, Direction.South));
+    }
+
+    public void test()
+    {
+        Debug.WriteLine("aaa");
     }
     
     [Fact]
