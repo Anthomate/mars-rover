@@ -3,9 +3,38 @@ name: .NET Tests
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
+  check-commit-message:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Get commit message
+        id: get_commit_message
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+
+      - name: Check for space emoji
+        id: check_emoji
+        run: |
+          if [[ "${{ steps.get_commit_message.outputs.commit_msg }}" =~ (🚀|👽|🪐) ]]; then
+            echo "Le message de commit contient un emoji spatial! ✓"
+            echo "contains_emoji=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Le message de commit ne contient pas d'emoji spatial requis (🚀, 👽 ou 🪐)"
+            echo "contains_emoji=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
   test:
+    needs: check-commit-message
     runs-on: ubuntu-latest
 
     steps:
