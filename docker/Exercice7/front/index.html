@@ -1,24 +1,37 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="">
 <head>
     <title>Hello de PostgreSQL</title>
 </head>
 <body>
-<h1>Message de PostgreSQL</h1>
-<div id="message"></div>
-<button onclick="getMessage()">Rafraichir</button>
+<h1>Messages de PostgreSQL</h1>
+
+<div id="message">Chargement...</div>
+
+<button onclick="getMessages()">Rafraichir</button>
+
+<hr>
+
+<h2>Ajouter un message</h2>
+<input type="text" id="newMessage" placeholder="Entrez votre message">
+<button onclick="addMessage()">Ajouter</button>
 
 <script>
-    function getMessage() {
+    function getMessages() {
         document.getElementById('message').innerHTML = 'Chargement...';
 
         fetch('/api/messages')
             .then(res => res.json())
             .then(data => {
                 if (data.length > 0) {
-                    document.getElementById('message').innerHTML = data[0].text;
+                    let html = '<ul>';
+                    data.forEach(message => {
+                        html += `<li>${message.text}</li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('message').innerHTML = html;
                 } else {
-                    document.getElementById('message').innerHTML = 'Pas de message trouvé';
+                    document.getElementById('message').innerHTML = 'Pas de message trouve';
                 }
             })
             .catch(err => {
@@ -26,7 +39,36 @@
             });
     }
 
-    getMessage();
+    function addMessage() {
+        const text = document.getElementById('newMessage').value;
+
+        if (!text) {
+            alert('Veuillez entrer un message');
+            return;
+        }
+
+        fetch('/api/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text: text })
+        })
+            .then(res => {
+                if (res.ok) {
+                    document.getElementById('newMessage').value = '';
+                    getMessages();
+                    alert('Message ajoute !');
+                } else {
+                    alert('Erreur lors de l\'ajout du message');
+                }
+            })
+            .catch(err => {
+                alert('Erreur: ' + err);
+            });
+    }
+
+    getMessages();
 </script>
 </body>
 </html>
