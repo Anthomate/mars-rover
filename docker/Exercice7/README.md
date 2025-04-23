@@ -1,3 +1,1 @@
-docker-compose up -d
-
-docker inspect container_mariadb | Select-String "Health" 
+docker-compose up -d depuis Repo Exercice7
