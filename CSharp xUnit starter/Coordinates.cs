@@ -1,3 +1,5 @@
+using System;
+
 namespace CSharp_xUnit_starter;
 
 public record Coordinates(int X, int Y, Direction Direction)

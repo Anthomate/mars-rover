@@ -1,8 +1,12 @@
+using System;
+using System.Collections.Generic;
+
 namespace CSharp_xUnit_starter;
 
 public class Rover
 {
     public Coordinates Coordinates { get; }
+    public Wheel Wheel { get; }
 
     public Rover(int x, int y, Direction direction)
     {

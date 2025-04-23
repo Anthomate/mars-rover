@@ -1,13 +1,10 @@
 name: .NET Tests
-
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  check-commit-message:
+  setup-citools:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -15,30 +12,82 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Get commit message
-        id: get_commit_message
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0.x
 
-      - name: Check for space emoji
-        id: check_emoji
+      - name: Build CI Tools
         run: |
-          if [[ "${{ steps.get_commit_message.outputs.commit_msg }}" =~ (🚀|👽|🪐) ]]; then
-            echo "Le message de commit contient un emoji spatial! ✓"
-            echo "contains_emoji=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Le message de commit ne contient pas d'emoji spatial requis (🚀, 👽 ou 🪐)"
-            echo "contains_emoji=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          cd CITools
+          dotnet build
+          dotnet pack
+          dotnet tool install --global --add-source ./nupkg CITools
 
-  test:
-    needs: check-commit-message
+      - name: Cache CI Tools
+        uses: actions/cache@v3
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ github.sha }}
+  
+  check-commit-message:
+    needs: setup-citools
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Restore CI Tools from cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ github.sha }}
+
+      - name: Check commit message
+        run: citools check-commit
+  
+  detect-circular-references:
+    needs: setup-citools
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Restore CI Tools from cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ github.sha }}
+
+      - name: Detect circular references
+        id: circular_refs
+        run: citools detect-circular-refs --project-path './CSharp xUnit starter' --exclude "*/obj/*|*/bin/*"
+        continue-on-error: true
+
+      - name: Set circular references status
+        if: steps.circular_refs.outcome != 'success'
+        run: |
+          echo "⚠️ Des références circulaires ont été détectées dans le code"
+          echo "🔄 Veuillez refactoriser votre code pour éliminer les dépendances circulaires"
+  
+  test:
+    needs: [check-commit-message, detect-circular-references]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
@@ -47,27 +96,17 @@ jobs:
           cache: true
           cache-dependency-path: './CSharp xUnit starter/packages.lock.json'
 
-      - name: Restore dependencies
-        run: dotnet restore
-        working-directory: './CSharp xUnit starter'
+      - name: Restore CI Tools from cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ github.sha }}
 
-      - name: Build
-        run: dotnet build --no-restore
-        working-directory: './CSharp xUnit starter'
-
-      - name: Test
+      - name: Run tests
         id: test
-        run: dotnet test --no-build --verbosity normal
-        working-directory: './CSharp xUnit starter'
+        run: citools run-tests --project-path './CSharp xUnit starter'
         continue-on-error: true
 
-      - name: Passed tests ☀️
-        if: steps.test.outcome == 'success'
-        run: echo "☀️ Tous les tests ont réussi!"
-
-      - name: Failed tests ⛈️
+      - name: Set build status
         if: steps.test.outcome != 'success'
-        run: |
-          echo "⛈️ Certains tests ont échoué!"
-          echo "👽 Humain ton code est icompréhensible pour ma civilisation. Peux tu ajouter des tests ?"
-          exit 1
+        run: exit 1
