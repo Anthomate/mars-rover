@@ -3,17 +3,17 @@ using CITools.Commands;
 
 namespace CITools;
 
-class Program
+internal static class Program
 {
     static async Task<int> Main(string[] args)
     {
-        var rootCommand = new RootCommand("Outils CI pour les workflows GitHub Actions");
+        var rootCommand = new RootCommand("GitHub Actions CI Tools");
 
-        var checkCommitCommand = new Command("check-commit", "Vérifie si le message de commit contient un emoji spatial requis");
+        var checkCommitCommand = new Command("check-commit");
         var repoPathOption = new Option<string>(
             "--repo-path",
             getDefaultValue: () => ".",
-            description: "Chemin du dépôt Git"
+            description: "Git Repository Path"
         );
         checkCommitCommand.AddOption(repoPathOption);
         checkCommitCommand.SetHandler(repoPath =>
@@ -24,16 +24,16 @@ class Program
         }, repoPathOption);
         rootCommand.AddCommand(checkCommitCommand);
 
-        var runTestsCommand = new Command("run-tests", "Exécute les tests .NET et rapporte les résultats");
+        var runTestsCommand = new Command("run-tests");
         var projectPathOption = new Option<string>(
-            "--project-path",
-            description: "Chemin du projet à tester"
-        );
-        projectPathOption.IsRequired = true;
+            "--project-path"
+        )
+        {
+            IsRequired = true
+        };
         var verbosityOption = new Option<string>(
             "--verbosity",
-            getDefaultValue: () => "normal",
-            description: "Niveau de détail de sortie (quiet, minimal, normal, detailed, diagnostic)"
+            getDefaultValue: () => "normal"
         );
         runTestsCommand.AddOption(projectPathOption);
         runTestsCommand.AddOption(verbosityOption);

@@ -34,18 +34,16 @@ public static class GitHelper
         using var process = Process.Start(startInfo);
         if (process == null)
         {
-            throw new InvalidOperationException("Impossible de démarrer le processus Git");
+            throw new InvalidOperationException("Unable to start Git process");
         }
 
         string output = process.StandardOutput.ReadToEnd();
         process.WaitForExit();
 
-        if (process.ExitCode != 0)
-        {
-            string error = process.StandardError.ReadToEnd();
-            throw new InvalidOperationException($"Erreur Git (code {process.ExitCode}): {error}");
-        }
+        if (process.ExitCode == 0) return output.Trim();
+        
+        string error = process.StandardError.ReadToEnd();
+        throw new InvalidOperationException($"Git Error (code {process.ExitCode}): {error}");
 
-        return output.Trim();
     }
 }

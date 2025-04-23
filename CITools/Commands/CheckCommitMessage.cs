@@ -4,7 +4,7 @@ using CITools.Models;
 
 namespace CITools.Commands;
 
-public class CheckCommitMessage
+public static class CheckCommitMessage
 {
     private static readonly string[] RequiredEmojis = { "🚀", "👽", "🪐" };
     
@@ -14,22 +14,22 @@ public class CheckCommitMessage
         {
             string commitMessage = GitHelper.GetLastCommitMessage(repositoryPath);
             
-            Console.WriteLine($"Message de commit: {commitMessage}");
+            Console.WriteLine($"Commit message: {commitMessage}");
             
             bool containsEmoji = RequiredEmojis.Any(emoji => commitMessage.Contains(emoji));
             
             if (containsEmoji)
             {
-                return CommandResult.Ok("Le message de commit contient un emoji spatial! ✓");
+                return CommandResult.Ok("✅ The commit message contains a space emoji !");
             }
             else
             {
-                return CommandResult.Error("❌ Le message de commit ne contient pas d'emoji spatial requis (🚀, 👽 ou 🪐)");
+                return CommandResult.Error("❌ The commit message does not contain a required space emoji (🚀, 👽 or 🪐)");
             }
         }
         catch (Exception ex)
         {
-            return CommandResult.Error($"Erreur lors de la vérification du message de commit: {ex.Message}");
+            return CommandResult.Error($"Error checking commit message : {ex.Message}");
         }
     }
 }
