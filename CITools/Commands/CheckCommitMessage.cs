@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using CITools.Helpers;
 using CITools.Models;
 
@@ -18,14 +17,7 @@ public static class CheckCommitMessage
             
             bool containsEmoji = RequiredEmojis.Any(emoji => commitMessage.Contains(emoji));
             
-            if (containsEmoji)
-            {
-                return CommandResult.Ok("✅ The commit message contains a space emoji !");
-            }
-            else
-            {
-                return CommandResult.Error("❌ The commit message does not contain a required space emoji (🚀, 👽 or 🪐)");
-            }
+            return containsEmoji ? CommandResult.Ok("✅ The commit message contains a space emoji !") : CommandResult.Error("❌ The commit message does not contain a required space emoji.");
         }
         catch (Exception ex)
         {

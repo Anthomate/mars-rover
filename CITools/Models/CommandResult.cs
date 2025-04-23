@@ -6,7 +6,7 @@ public class CommandResult
     public string Message { get; set; }
     public int ExitCode => Success ? 0 : 1;
 
-    public CommandResult(bool success, string message)
+    private CommandResult(bool success, string message)
     {
         Success = success;
         Message = message;

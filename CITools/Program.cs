@@ -12,8 +12,7 @@ internal static class Program
         var checkCommitCommand = new Command("check-commit");
         var repoPathOption = new Option<string>(
             "--repo-path",
-            getDefaultValue: () => ".",
-            description: "Git Repository Path"
+            getDefaultValue: () => "."
         );
         checkCommitCommand.AddOption(repoPathOption);
         checkCommitCommand.SetHandler(repoPath =>
@@ -45,6 +44,30 @@ internal static class Program
         }, projectPathOption, verbosityOption);
         rootCommand.AddCommand(runTestsCommand);
 
+        var detectCircularRefsCommand = new Command("detect-circular-refs");
+        var circularRefsProjectPathOption = new Option<string>(
+            "--project-path"
+        );
+        circularRefsProjectPathOption.IsRequired = true;
+        var includePatternOption = new Option<string>(
+            "--include",
+            getDefaultValue: () => "*.cs"
+        );
+        var excludePatternOption = new Option<string?>(
+            "--exclude",
+            getDefaultValue: () => null
+        );
+        detectCircularRefsCommand.AddOption(circularRefsProjectPathOption);
+        detectCircularRefsCommand.AddOption(includePatternOption);
+        detectCircularRefsCommand.AddOption(excludePatternOption);
+        detectCircularRefsCommand.SetHandler((projectPath, includePattern, excludePattern) =>
+        {
+            var result = CircularReferenceDetector.Execute(projectPath, includePattern, excludePattern);
+            Console.WriteLine(result.Message);
+            Environment.Exit(result.ExitCode);
+        }, circularRefsProjectPathOption, includePatternOption, excludePatternOption);
+        rootCommand.AddCommand(detectCircularRefsCommand);
+        
         return await rootCommand.InvokeAsync(args);
     }
 }
