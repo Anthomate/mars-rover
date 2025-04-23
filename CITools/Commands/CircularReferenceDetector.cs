@@ -12,7 +12,7 @@ public static class CircularReferenceDetector
             Console.WriteLine($"Analysis of circular references in {projectPath}...");
             
             var csharpFiles = GetCSharpFiles(projectPath, includePattern, excludePattern);
-            Console.WriteLine($"{csharpFiles.Count} found to analyze.");
+            Console.WriteLine($"{csharpFiles.Count} files found.");
             
             if (csharpFiles.Count == 0)
             {
@@ -20,13 +20,7 @@ public static class CircularReferenceDetector
             }
             
             var classNodes = ExtractClassesAndDependencies(csharpFiles);
-            Console.WriteLine($"{classNodes.Count} classes found to analyze.");
-            
-            Console.WriteLine("Detected classes and dependencies :");
-            foreach (var node in classNodes.Values)
-            {
-                Console.WriteLine($"  {node}");
-            }
+            Console.WriteLine($"{classNodes.Count} classes to analyze.");
             
             if (classNodes.Count == 0)
             {
@@ -54,28 +48,31 @@ public static class CircularReferenceDetector
         }
         catch (Exception ex)
         {
-            return CommandResult.Error($"Error parsing circular references: {ex.Message}\n{ex.StackTrace}");
+            return CommandResult.Error($"Error parsing circular references: {ex.Message}");
         }
     }
-    
+
     private static List<string> GetCSharpFiles(string projectPath, string includePattern, string? excludePattern)
     {
         var files = Directory.GetFiles(projectPath, includePattern, SearchOption.AllDirectories);
+
+        if (excludePattern == null) return files.ToList();
         
-        if (excludePattern != null)
-        {
-            var excludeRegex = new Regex(excludePattern, RegexOptions.IgnoreCase);
-            files = files.Where(f => !excludeRegex.IsMatch(f)).ToArray();
-        }
-        
+        var excludeRegex = new Regex(excludePattern, RegexOptions.IgnoreCase);
+        files = files.Where(f => !excludeRegex.IsMatch(f)).ToArray();
+
         return files.ToList();
     }
-    
+
     private static Dictionary<string, ClassNode> ExtractClassesAndDependencies(List<string> csharpFiles)
     {
         var classNodes = new Dictionary<string, ClassNode>();
         
-        var classRegex = new Regex(@"(?:public|internal|private|protected|static)?\s+(?:abstract|sealed|partial)?\s*class\s+(\w+)", RegexOptions.Compiled);
+        var classRegex = new Regex(@"(?:public|internal|private|protected|static)?\s+(?:abstract|sealed)?\s*class\s+(\w+)", RegexOptions.Compiled);
+        
+        var typeRefRegex = new Regex(@"\b(\w+)\b\s+\w+\s*[,;=\)\(]", RegexOptions.Compiled);
+        
+        var usingRegex = new Regex(@"using\s+(?:static\s+)?([^;]+);", RegexOptions.Compiled);
         
         foreach (var file in csharpFiles)
         {
@@ -96,7 +93,6 @@ public static class CircularReferenceDetector
         {
             var content = File.ReadAllText(file);
             var classNamesInFile = classRegex.Matches(content)
-                                            .Cast<Match>()
                                             .Select(m => m.Groups[1].Value)
                                             .ToList();
             
@@ -104,121 +100,31 @@ public static class CircularReferenceDetector
                 continue;
             
             var referencedTypes = new HashSet<string>();
+            var typeMatches = typeRefRegex.Matches(content);
             
-            var propertyRegex = new Regex(@"(?:public|private|protected|internal)\s+([A-Za-z0-9_<>.]+(?:\[\])?)\s+([A-Za-z0-9_]+)\s*\{", RegexOptions.Compiled);
-            var propertyMatches = propertyRegex.Matches(content);
-            
-            foreach (Match match in propertyMatches)
+            foreach (Match match in typeMatches)
             {
                 var typeName = match.Groups[1].Value;
-                
-                var genericTypeRegex = new Regex(@"<([A-Za-z0-9_]+)>", RegexOptions.Compiled);
-                var genericMatches = genericTypeRegex.Matches(typeName);
-                
-                foreach (Match genericMatch in genericMatches)
+                if (classNodes.ContainsKey(typeName) && !classNamesInFile.Contains(typeName))
                 {
-                    var genericType = genericMatch.Groups[1].Value;
-                    if (classNodes.ContainsKey(genericType) && !classNamesInFile.Contains(genericType))
-                    {
-                        referencedTypes.Add(genericType);
-                    }
-                }
-                
-                var baseType = typeName.Split('<')[0].Trim();
-                if (classNodes.ContainsKey(baseType) && !classNamesInFile.Contains(baseType))
-                {
-                    referencedTypes.Add(baseType);
-                }
-            }
-            
-            var methodParamRegex = new Regex(@"(?:public|private|protected|internal)\s+(?:[A-Za-z0-9_<>.]+(?:\[\])?)\s+[A-Za-z0-9_]+\s*\(\s*([^)]*)\s*\)", RegexOptions.Compiled);
-            var methodMatches = methodParamRegex.Matches(content);
-            
-            foreach (Match match in methodMatches)
-            {
-                var parameters = match.Groups[1].Value;
-                if (string.IsNullOrEmpty(parameters))
-                    continue;
-                
-                var paramList = parameters.Split(',');
-                foreach (var param in paramList)
-                {
-                    var paramParts = param.Trim().Split(' ');
-                    if (paramParts.Length >= 2)
-                    {
-                        var paramType = paramParts[0].Trim();
-                        
-                        var genericTypeRegex = new Regex(@"<([A-Za-z0-9_]+)>", RegexOptions.Compiled);
-                        var genericMatches = genericTypeRegex.Matches(paramType);
-                        
-                        foreach (Match genericMatch in genericMatches)
-                        {
-                            var genericType = genericMatch.Groups[1].Value;
-                            if (classNodes.ContainsKey(genericType) && !classNamesInFile.Contains(genericType))
-                            {
-                                referencedTypes.Add(genericType);
-                            }
-                        }
-                        
-                        var baseType = paramType.Split('<')[0].Trim();
-                        if (classNodes.ContainsKey(baseType) && !classNamesInFile.Contains(baseType))
-                        {
-                            referencedTypes.Add(baseType);
-                        }
-                    }
-                }
-            }
-            
-            var localVarRegex = new Regex(@"(?:var|[A-Za-z0-9_<>.]+(?:\[\])?)\s+([A-Za-z0-9_]+)\s*=", RegexOptions.Compiled);
-            var localVarMatches = localVarRegex.Matches(content);
-            
-            foreach (Match match in localVarMatches)
-            {
-                var varDecl = match.Value;
-                var typePart = varDecl.Split('=')[0].Trim();
-                
-                if (!typePart.StartsWith("var"))
-                {
-                    var typeName = typePart.Substring(0, typePart.LastIndexOf(' ')).Trim();
-                    
-                    var genericTypeRegex = new Regex(@"<([A-Za-z0-9_]+)>", RegexOptions.Compiled);
-                    var genericMatches = genericTypeRegex.Matches(typeName);
-                    
-                    foreach (Match genericMatch in genericMatches)
-                    {
-                        var genericType = genericMatch.Groups[1].Value;
-                        if (classNodes.ContainsKey(genericType) && !classNamesInFile.Contains(genericType))
-                        {
-                            referencedTypes.Add(genericType);
-                        }
-                    }
-                    
-                    var baseType = typeName.Split('<')[0].Trim();
-                    if (classNodes.ContainsKey(baseType) && !classNamesInFile.Contains(baseType))
-                    {
-                        referencedTypes.Add(baseType);
-                    }
+                    referencedTypes.Add(typeName);
                 }
             }
             
             foreach (var className in classNamesInFile)
             {
-                if (classNodes.TryGetValue(className, out var classNode))
+                if (!classNodes.TryGetValue(className, out var classNode)) continue;
+                
+                foreach (var referencedType in referencedTypes)
                 {
-                    foreach (var referencedType in referencedTypes)
-                    {
-                        if (classNodes.ContainsKey(referencedType))
-                        {
-                            classNode.Dependencies.Add(referencedType);
-                        }
-                    }
+                    classNode.Dependencies.Add(referencedType);
                 }
             }
         }
         
         return classNodes;
     }
-    
+
     private static List<List<string>> DetectCircularReferences(Dictionary<string, ClassNode> classNodes)
     {
         var circularReferences = new List<List<string>>();
@@ -257,7 +163,7 @@ public static class CircularReferenceDetector
         {
             var cycleStart = path.IndexOf(current);
             var cycle = path.Skip(cycleStart).ToList();
-            cycles.Add(new List<string>(cycle));
+            cycles.Add(cycle);
             return;
         }
         
@@ -270,13 +176,13 @@ public static class CircularReferenceDetector
         {
             foreach (var dependency in classNode.Dependencies)
             {
-                Dfs(dependency, classNodes, new HashSet<string>(visited), new List<string>(path), cycles);
+                Dfs(dependency, classNodes, visited, path, cycles);
             }
         }
         
         path.RemoveAt(path.Count - 1);
     }
-    
+
     private static List<string> NormalizeCycle(List<string> cycle)
     {
         if (cycle.Count <= 1)
@@ -287,11 +193,10 @@ public static class CircularReferenceDetector
         
         for (int i = 1; i < cycle.Count; i++)
         {
-            if (string.Compare(cycle[i], minValue, StringComparison.Ordinal) < 0)
-            {
-                minIndex = i;
-                minValue = cycle[i];
-            }
+            if (string.Compare(cycle[i], minValue, StringComparison.Ordinal) >= 0) continue;
+            
+            minIndex = i;
+            minValue = cycle[i];
         }
         
         var normalized = new List<string>();
