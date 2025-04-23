@@ -11,4 +11,8 @@ public class ClassNode
         Name = name;
         FilePath = filePath;
     }
+    public override string ToString()
+    {
+        return $"{Name} -> [{string.Join(", ", Dependencies)}]";
+    }
 }
