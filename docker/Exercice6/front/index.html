@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Hello de PostgreSQL</title>
+</head>
+<body>
+<h1>Message de PostgreSQL</h1>
+<div id="message"></div>
+<button onclick="getMessage()">Rafraichir</button>
+
+<script>
+    function getMessage() {
+        document.getElementById('message').innerHTML = 'Chargement...';
+
+        fetch('/api/messages')
+            .then(res => res.json())
+            .then(data => {
+                if (data.length > 0) {
+                    document.getElementById('message').innerHTML = data[0].text;
+                } else {
+                    document.getElementById('message').innerHTML = 'Pas de message trouvé';
+                }
+            })
+            .catch(err => {
+                document.getElementById('message').innerHTML = 'Erreur: ' + err;
+            });
+    }
+
+    getMessage();
+</script>
+</body>
+</html>

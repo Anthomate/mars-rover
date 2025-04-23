@@ -1,0 +1,8 @@
+{
+  "name": "hello-world-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "mkdir -p dist && cp -r *.html dist/",
+    "start": "echo 'Nginx dans Docker'"
+  }
+}

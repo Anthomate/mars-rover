@@ -1,0 +1,17 @@
+version: '3'
+services:
+  container_a:
+    image: alpine:latest
+    container_name: container_a
+    command: sh -c "apk add --no-cache iputils && sleep infinity"
+    networks:
+      - docker-network
+  container_b:
+    image: alpine:latest
+    container_name: container_b
+    command: sh -c "apk add --no-cache iputils && sleep infinity"
+    networks:
+      - docker-network
+networks:
+  docker-network:
+    driver: bridge
