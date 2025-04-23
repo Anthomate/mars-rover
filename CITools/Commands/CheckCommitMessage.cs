@@ -6,7 +6,7 @@ namespace CITools.Commands;
 
 public class CheckCommitMessage
 {
-    private static readonly string[] RequiredEmojis = { "🚀", "👽", "🪐", "☀️" };
+    private static readonly string[] RequiredEmojis = { "🚀", "👽", "🪐" };
     
     public static CommandResult Execute(string repositoryPath = ".")
     {
